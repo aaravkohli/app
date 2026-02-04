@@ -3,11 +3,13 @@ services:
     name: promptguard-api
     env: python
     plan: free
-    buildCommand: pip install --no-cache-dir -r requirements.txt
-    startCommand: gunicorn api_server:app
+    buildCommand: pip install --no-cache-dir --no-build-isolation -r requirements.txt
+    startCommand: gunicorn --workers 2 --timeout 120 --bind 0.0.0.0:$PORT api_server:app
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
+      - key: PYTHONUNBUFFERED
+        value: "1"
       - key: PIP_DISABLE_PIP_VERSION_CHECK
         value: "1"
       - key: FLASK_ENV
