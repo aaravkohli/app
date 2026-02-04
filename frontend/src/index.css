@@ -1,0 +1,288 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Core palette - Deep slate security aesthetic */
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 47% 8%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 10%;
+    --popover-foreground: 210 40% 98%;
+
+    /* Primary - Soft blue/indigo */
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 6%;
+
+    /* Secondary - Muted slate */
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 33% 14%;
+    --muted-foreground: 215 20% 55%;
+
+    --accent: 217 33% 20%;
+    --accent-foreground: 210 40% 98%;
+
+    /* Status colors */
+    --safe: 160 84% 39%;
+    --safe-foreground: 160 84% 95%;
+    --safe-glow: 160 84% 39%;
+    
+    --warning: 38 92% 50%;
+    --warning-foreground: 38 92% 10%;
+    
+    --danger: 0 84% 60%;
+    --danger-foreground: 0 84% 98%;
+    --danger-glow: 0 84% 60%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 217 91% 60%;
+
+    --radius: 0.75rem;
+
+    /* Sidebar */
+    --sidebar-background: 222 47% 8%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 222 47% 6%;
+    --sidebar-accent: 217 33% 17%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 33% 17%;
+    --sidebar-ring: 217 91% 60%;
+
+    /* Custom gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%), hsl(250 91% 65%));
+    --gradient-safe: linear-gradient(135deg, hsl(160 84% 39%), hsl(160 70% 50%));
+    --gradient-danger: linear-gradient(135deg, hsl(0 84% 60%), hsl(15 84% 55%));
+    --gradient-card: linear-gradient(180deg, hsl(222 47% 10%), hsl(222 47% 8%));
+    --gradient-glow: radial-gradient(ellipse at center, hsl(217 91% 60% / 0.15), transparent 70%);
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 2px hsl(222 47% 3% / 0.5);
+    --shadow-md: 0 4px 12px hsl(222 47% 3% / 0.5);
+    --shadow-lg: 0 8px 24px hsl(222 47% 3% / 0.6);
+    --shadow-glow-primary: 0 0 20px hsl(217 91% 60% / 0.3);
+    --shadow-glow-safe: 0 0 20px hsl(160 84% 39% / 0.4);
+    --shadow-glow-danger: 0 0 20px hsl(0 84% 60% / 0.4);
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer components {
+  /* Glass effect card */
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-xl border border-border/50 rounded-xl;
+    box-shadow: var(--shadow-md);
+  }
+
+  /* Glow effects */
+  .glow-primary {
+    box-shadow: var(--shadow-glow-primary);
+  }
+
+  .glow-safe {
+    box-shadow: var(--shadow-glow-safe);
+  }
+
+  .glow-danger {
+    box-shadow: var(--shadow-glow-danger);
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+    background-image: var(--gradient-primary);
+  }
+
+  /* Button variants */
+  .btn-primary {
+    @apply relative overflow-hidden;
+    background: var(--gradient-primary);
+  }
+
+  .btn-primary::before {
+    content: '';
+    @apply absolute inset-0 opacity-0 transition-opacity duration-200;
+    background: linear-gradient(135deg, hsl(217 91% 70%), hsl(250 91% 75%));
+  }
+
+  .btn-primary:hover::before {
+    @apply opacity-100;
+  }
+
+  /* Risk meter styles */
+  .risk-meter-track {
+    @apply relative h-2 rounded-full overflow-hidden;
+    background: linear-gradient(90deg, 
+      hsl(160 84% 39% / 0.2) 0%, 
+      hsl(38 92% 50% / 0.2) 50%, 
+      hsl(0 84% 60% / 0.2) 100%
+    );
+  }
+
+  .risk-meter-fill {
+    @apply h-full rounded-full transition-all duration-500 ease-out;
+  }
+
+  .risk-low {
+    background: linear-gradient(90deg, hsl(160 84% 39%), hsl(160 70% 50%));
+    box-shadow: 0 0 12px hsl(160 84% 39% / 0.5);
+  }
+
+  .risk-medium {
+    background: linear-gradient(90deg, hsl(38 92% 50%), hsl(45 92% 55%));
+    box-shadow: 0 0 12px hsl(38 92% 50% / 0.5);
+  }
+
+  .risk-high {
+    background: linear-gradient(90deg, hsl(0 84% 60%), hsl(15 84% 55%));
+    box-shadow: 0 0 12px hsl(0 84% 60% / 0.5);
+  }
+
+  /* Scanning animation */
+  @keyframes scan-line {
+    0% {
+      transform: translateX(-100%);
+      opacity: 0;
+    }
+    50% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+  }
+
+  .scan-animation {
+    animation: scan-line 1.5s ease-in-out infinite;
+  }
+
+  /* Pulse ring animation */
+  @keyframes pulse-ring {
+    0% {
+      transform: scale(0.8);
+      opacity: 0.8;
+    }
+    50% {
+      transform: scale(1);
+      opacity: 0.4;
+    }
+    100% {
+      transform: scale(1.2);
+      opacity: 0;
+    }
+  }
+
+  .pulse-ring {
+    animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Shield animation */
+  @keyframes shield-check {
+    0% {
+      transform: scale(0.8);
+      opacity: 0;
+    }
+    50% {
+      transform: scale(1.1);
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  .shield-animate {
+    animation: shield-check 0.4s ease-out forwards;
+  }
+
+  /* Typewriter cursor */
+  @keyframes blink {
+    0%, 50% {
+      opacity: 1;
+    }
+    51%, 100% {
+      opacity: 0;
+    }
+  }
+
+  .typewriter-cursor::after {
+    content: '|';
+    @apply ml-0.5 text-primary;
+    animation: blink 1s infinite;
+  }
+
+  /* Ripple effect */
+  @keyframes ripple {
+    0% {
+      transform: scale(0);
+      opacity: 0.5;
+    }
+    100% {
+      transform: scale(4);
+      opacity: 0;
+    }
+  }
+
+  .ripple {
+    @apply absolute rounded-full bg-white/20 pointer-events-none;
+    animation: ripple 0.6s linear;
+  }
+
+  /* Float animation */
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-5px);
+    }
+  }
+
+  .float {
+    animation: float 3s ease-in-out infinite;
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-muted/30 rounded-full;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-muted-foreground/30 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground/50;
+}
