@@ -48,6 +48,9 @@ env/
 .pylintrc
 .pytest_cache/
 .coverage
+
+# Documentation
+doc/
 htmlcov/
 
 # Logs

@@ -37,3 +37,6 @@ coverage/
 # Misc
 .cache/
 *.tsbuildinfo
+
+# Documentation
+doc/
