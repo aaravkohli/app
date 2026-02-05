@@ -260,6 +260,27 @@ async def analyze(
             if use_phase2 else analysis_data
         )
         
+        # Extract Vigil scan results if available
+        vigil_analysis_data = base_analysis.get('vigil_scan', {})
+        vigil_analysis = None
+        
+        if vigil_analysis_data and not vigil_analysis_data.get('unavailable'):
+            from promptguard.api.schemas import VigilAnalysisResponse, VigilScannerResult
+            
+            # Convert vigil results to response schema
+            scanners = {}
+            for scanner_name, scanner_result in vigil_analysis_data.get('scanners', {}).items():
+                if isinstance(scanner_result, dict):
+                    scanners[scanner_name] = VigilScannerResult(**scanner_result)
+            
+            vigil_analysis = VigilAnalysisResponse(
+                scanners=scanners,
+                detections=vigil_analysis_data.get('detections', []),
+                risk_indicators=vigil_analysis_data.get('risk_indicators', []),
+                aggregated_risk=vigil_analysis_data.get('aggregated_risk', 0.0),
+                timestamp=vigil_analysis_data.get('timestamp', datetime.now().isoformat())
+            )
+        
         # Build threat analysis detail
         threat_analysis = ThreatAnalysisDetail(
             intent=ThreatIntentAnalysis(
@@ -324,6 +345,7 @@ async def analyze(
             decision_confidence=base_analysis.get("confidence", 0.85),
             prompt=prompt,
             analysis=threat_analysis,
+            vigil_analysis=vigil_analysis,
             intent_analysis=intent_analysis,
             escalation_analysis=escalation_analysis,
             semantic_analysis=semantic_analysis,

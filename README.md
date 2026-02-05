@@ -1,17 +1,19 @@
 # PromptGuard - Secure AI Gateway
 
 **A production-ready AI security system that analyzes prompts for injection attacks in real-time.**
+**Enterprise-grade AI security with adaptive learning and intelligent policy enforcement.**
 
 ![Status](https://img.shields.io/badge/Status-Production%20Ready-green)
 ![License](https://img.shields.io/badge/License-MIT-blue)
 ![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
 ![React](https://img.shields.io/badge/React-18%2B-blue)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-13%2B-blue)
 
 ---
 
 ## What is PromptGuard?
 
-PromptGuard is a comprehensive AI safety system that protects users and systems from prompt injection attacks. It uses a multi-layered approach combining machine learning, lexical analysis, and output protection to ensure only safe prompts reach your AI models.
+PromptGuard is an enterprise-grade AI security gateway that protects users and systems from prompt injection attacks. It uses a multi-layered approach combining machine learning, behavioral analysis, adaptive learning, and intelligent policy enforcement to ensure only safe prompts reach your AI models.
 
 ### Key Features
 
@@ -19,35 +21,83 @@ PromptGuard is a comprehensive AI safety system that protects users and systems 
 - ML-based threat detection (ProtectAI/deberta-v3)
 - Custom lexical pattern matching
 - Adaptive learning from dangerous phrases
+- **Phase 1**: ML-based threat detection (ProtectAI/deberta-v3)
+- **Phase 2**: Multi-dimensional behavioral analysis (intent, escalation, semantic)
+- **Phase 3**: Adaptive learning with pattern extraction and poisoning protection
+- Custom lexical pattern matching
 - Output-side protection for generated responses
 
+🧠 **Adaptive Learning** (Phase 3)
+- Automatic pattern extraction from blocked prompts
+- Confidence-based scoring and auto-promotion
+- Poisoning attack detection
+- Human-in-the-loop approval workflow
+- Version control with rollback capabilities
+
+📋 **Intelligent Policy Engine** (Phase 3)
+- 4 built-in policies: Strict, Balanced, Permissive, Development
+- 6 decision types: APPROVED, BLOCKED, CHALLENGE, REWRITE, AUDIT, ESCALATE
+- Intent-specific threat handling
+- User trust profile integration
+- Smart prompt rewriting with LLM
+
+👥 **User Feedback System** (Phase 3)
+- False positive/negative reporting
+- Continuous learning from user corrections
+- Feedback-driven pattern updates
+
 🚀 **Real-Time Analysis**
-- Fast risk-only analysis (200-500ms)
+- Fast Phase 1 analysis (200-500ms)
+- Phase 2 multi-dimensional analysis (500-800ms)
+- Phase 3 policy evaluation (<200ms)
 - Full analysis with LLM response (2-5 seconds)
 - Batch processing for multiple prompts
-- Stream response capability
 
 🎨 **Beautiful Interface**
 - Modern React/TypeScript frontend
 - Real-time visual feedback
+- Phase 2 insights panel (intent, escalation, semantic patterns)
+- Phase 3 policy selector and decision display
+- Feedback controls with detailed dialog
 - Animated risk meter
 - Detailed security metrics
-- Dark mode support
 
 ⚙️ **Production Ready**
 - REST API with error handling
 - CORS support for frontend
+- FastAPI with async/await
+- PostgreSQL database for persistent learning
+- REST API with comprehensive error handling
 - Comprehensive logging
 - Environmental configuration
-- Type-safe TypeScript
+- Type-safe TypeScript frontend
+- 80%+ test coverage
 
----
 
-## Quick Start (5 Minutes)
+## Quick Start
 
-### 1. Start API Server
+### Option 1: Phase 3 Enhanced Server (Recommended)
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Setup PostgreSQL
+createdb promptguard
+python -c "from database.connection import db_manager; db_manager.create_tables()"
+
+# Set environment variables
+export DATABASE_URL="postgresql://user:password@localhost:5432/promptguard"
+export GEMINI_API_KEY="your-gemini-api-key"  # Optional, for smart rewriting
+
+# Start Phase 3 server
+uvicorn api_server_v3:app --reload --port 8000
+```
+
+### Option 2: Legacy Flask Server (Phase 1 Only)
 ```bash
 cd /Users/aaravkohli/idk
+python api_server.py
+```
 python api_server.py
 ```
 

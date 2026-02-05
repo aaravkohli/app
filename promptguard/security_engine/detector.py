@@ -1,5 +1,6 @@
 """
 Async Security Detector - Core threat detection engine with async inference
+Integrated with Vigil-LLM for multi-scanner prompt injection detection
 """
 
 import asyncio
@@ -14,12 +15,14 @@ logger = logging.getLogger(__name__)
 class AsyncSecurityDetector:
     """
     Async, preloaded ML inference with proper separation of concerns
+    Runs Vigil-LLM scanners in parallel for comprehensive threat detection
     """
     
     def __init__(self, config):
         self.config = config
         self.ml_model = None
         self.semantic_model = None
+        self.vigil_scanner = None
         self.executor = None
         self.is_initialized = False
         self.inference_queue = asyncio.Queue()
@@ -47,6 +50,12 @@ class AsyncSecurityDetector:
             logger.info("Loading semantic embedding model...")
             if self.config.ENABLE_SEMANTIC_ANALYSIS:
                 self.semantic_model = await self._load_semantic_model()
+            
+            # Initialize Vigil-LLM scanner (parallel detection)
+            logger.info("Initializing Vigil-LLM scanner...")
+            from promptguard.security_engine.vigil_scanner import AsyncVigilScanner
+            self.vigil_scanner = AsyncVigilScanner(self.config)
+            await self.vigil_scanner.initialize()
             
             self.is_initialized = True
             self.initialization_time = (datetime.now() - start_time).total_seconds()
@@ -95,7 +104,8 @@ class AsyncSecurityDetector:
     async def analyze_async(self, prompt: str) -> Dict[str, Any]:
         """
         Main analysis endpoint (non-blocking)
-        Returns basic risk analysis synchronously
+        Runs Vigil scanners in parallel with internal analysis
+        Returns comprehensive threat assessment
         """
         
         if not self.is_initialized:
@@ -103,12 +113,32 @@ class AsyncSecurityDetector:
         
         loop = asyncio.get_event_loop()
         
-        # Run analysis in thread pool to avoid blocking
-        result = await loop.run_in_executor(
-            None,
-            self._sync_analyze,
-            prompt
+        # Run both internal analysis and Vigil scanners in parallel
+        internal_result, vigil_result = await asyncio.gather(
+            loop.run_in_executor(None, self._sync_analyze, prompt),
+            self.vigil_scanner.scan_prompt(prompt) if self.vigil_scanner else asyncio.sleep(0, None)
         )
+        
+        # Merge results
+        result = {
+            **internal_result,
+            "vigil_scan": vigil_result if vigil_result else None
+        }
+        
+        # Adjust risk score if Vigil detected threats
+        if vigil_result and vigil_result.get("detections"):
+            vigil_risk = vigil_result.get("aggregated_risk", 0.0)
+            # Weight Vigil results: 30% Vigil, 70% internal analysis
+            original_risk = result.get("risk_score", 0.0)
+            result["risk_score"] = round(
+                (0.7 * original_risk) + (0.3 * vigil_risk),
+                3
+            )
+            
+            # If Vigil detected threats, increase blocking threshold
+            if vigil_risk > 0.6:
+                result["status"] = "blocked"
+                result["block_reason"] = "Vigil-LLM threat detection"
         
         return result
     
@@ -262,6 +292,14 @@ class AsyncSecurityDetector:
         """Called on shutdown"""
         
         logger.info("Cleaning up detector resources...")
+        
+        try:
+            if self.vigil_scanner:
+                await self.vigil_scanner.cleanup()
+        except Exception as e:
+            logger.error(f"Error cleaning up Vigil scanner: {e}")
+        
         self.ml_model = None
         self.semantic_model = None
+        self.vigil_scanner = None
         self.is_initialized = False

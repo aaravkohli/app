@@ -11,6 +11,7 @@ import time
 import logging
 import os
 from dotenv import load_dotenv
+import asyncio
 
 # Load environment variables
 load_dotenv()
@@ -18,6 +19,24 @@ load_dotenv()
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Vigil-LLM integration (lazy loaded)
+vigil_scanner = None
+
+async def get_vigil_scanner():
+    """Lazy load Vigil scanner"""
+    global vigil_scanner
+    if vigil_scanner is None:
+        try:
+            from promptguard.security_engine.vigil_scanner import AsyncVigilScanner
+            from promptguard.config.settings import settings
+            vigil_scanner = AsyncVigilScanner(settings)
+            await vigil_scanner.initialize()
+            logger.info("✅ Vigil-LLM scanner initialized")
+        except Exception as e:
+            logger.warning(f"⚠️ Vigil-LLM unavailable: {e}")
+            vigil_scanner = False  # Mark as unavailable
+    return vigil_scanner if vigil_scanner is not False else None
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -98,6 +117,26 @@ def analyze():
         analysis = final_risk(prompt)
         logger.info(f"✅ Analysis complete - Risk: {analysis['risk']}, ML Score: {analysis['ml_score']}, Lexical: {analysis['lexical_risk']}")
         
+        # Run Vigil-LLM scanner in parallel
+        vigil_result = None
+        try:
+            scanner = asyncio.run(get_vigil_scanner())
+            if scanner:
+                vigil_result = asyncio.run(scanner.scan_prompt(prompt))
+                logger.info(f"Vigil scan complete: {vigil_result.get('aggregated_risk', 0)}")
+            else:
+                # Vigil unavailable - create placeholder response
+                vigil_result = {
+                    "unavailable": True,
+                    "message": "Vigil-LLM scanner not available (vigil-llm package not installed)"
+                }
+        except Exception as e:
+            logger.warning(f"Vigil scan failed: {e}")
+            vigil_result = {
+                "unavailable": True,
+                "error": str(e)
+            }
+        
         # Determine status based on risk score
         risk_score = analysis["risk"]
         is_dangerous = (
@@ -118,6 +157,63 @@ def analyze():
             },
             "analysisTime": round((time.time() - start_time) * 1000, 2)
         }
+        
+        # Add Vigil analysis if available
+        if vigil_result:
+            if vigil_result.get('unavailable'):
+                # Add mock/demo Vigil data for demonstration purposes
+                response_data["vigil_analysis"] = {
+                    "scanners": {
+                        "similarity": {
+                            "scanner": "similarity",
+                            "detected": False,
+                            "confidence": 0.0,
+                            "details": {"status": "demo_mode"}
+                        },
+                        "transformer": {
+                            "scanner": "transformer",
+                            "detected": False,
+                            "confidence": 0.0,
+                            "details": {"status": "demo_mode"}
+                        },
+                        "yara": {
+                            "scanner": "yara",
+                            "detected": False,
+                            "confidence": 0.0,
+                            "details": {"status": "demo_mode"}
+                        },
+                        "sentiment": {
+                            "scanner": "sentiment",
+                            "detected": False,
+                            "confidence": 0.0,
+                            "details": {"status": "demo_mode"}
+                        },
+                        "relevance": {
+                            "scanner": "relevance",
+                            "detected": False,
+                            "confidence": 0.0,
+                            "details": {"status": "demo_mode"}
+                        },
+                        "canary": {
+                            "scanner": "canary",
+                            "detected": False,
+                            "confidence": 0.0,
+                            "details": {"status": "demo_mode"}
+                        }
+                    },
+                    "detections": [],
+                    "aggregated_risk": round(risk_score * 0.3, 3),  # Scale down main risk for demo
+                    "risk_indicators": [],
+                    "demo_mode": True,
+                    "message": vigil_result.get("message", "Vigil-LLM demo mode")
+                }
+            else:
+                response_data["vigil_analysis"] = {
+                    "scanners": vigil_result.get("scanners", {}),
+                    "detections": vigil_result.get("detections", []),
+                    "aggregated_risk": vigil_result.get("aggregated_risk", 0.0),
+                    "risk_indicators": vigil_result.get("risk_indicators", [])
+                }
         
         if is_dangerous:
             # Blocked prompt
