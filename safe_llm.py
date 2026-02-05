@@ -11,7 +11,7 @@ genai.configure(api_key=api_key)
 
 # Use available Gemini model
 try:
-    gemini_model = genai.GenerativeModel("gemini-pro")
+    gemini_model = genai.GenerativeModel("gemini-2.5-flash")
 except Exception as e:
     print(f"Model initialization error: {e}")
     raise
@@ -29,10 +29,23 @@ def call_llm(prompt: str) -> str:
                 "max_output_tokens": 1024
             }
         )
-        return response.text
+        if response and response.text:
+            return response.text
+        else:
+            return "I couldn't generate a response. Please try again."
     except Exception as e:
-        print(f"LLM Error: {str(e)}")
-        raise Exception(f"Failed to generate response: {str(e)}")
+        error_msg = str(e)
+        print(f"LLM Error Details: {error_msg}")
+        
+        # Fallback response
+        if "429" in error_msg or "quota" in error_msg.lower():
+            raise Exception("API rate limit exceeded. Please try again in a moment.")
+        elif "401" in error_msg or "unauthorized" in error_msg.lower():
+            raise Exception("API authentication failed. Check your GOOGLE_API_KEY.")
+        elif "404" in error_msg:
+            raise Exception("Model not found. Try with a different model.")
+        else:
+            raise Exception(f"LLM processing failed: {error_msg}")
 
 # =========================
 # Load model (lazy loading)
