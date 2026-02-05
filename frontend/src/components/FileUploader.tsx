@@ -14,10 +14,10 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { apiService, MultimodalAnalysisResponse } from "@/lib/apiService_multimodal";
+import { apiService, AnalysisResponse } from "@/lib/apiService";
 
 interface FileUploaderProps {
-  onAnalysisComplete?: (result: MultimodalAnalysisResponse) => void;
+  onAnalysisComplete?: (result: AnalysisResponse) => void;
   onError?: (error: string) => void;
   autoAnalyze?: boolean;
   onFilesSelected?: (files: File[]) => void;
@@ -28,7 +28,7 @@ interface UploadedFile {
   file: File;
   type: "image" | "video" | "code" | "document" | "archive" | "other";
   status: "pending" | "uploading" | "analyzing" | "complete" | "error";
-  result?: MultimodalAnalysisResponse;
+  result?: AnalysisResponse;
   error?: string;
 }
 
@@ -80,7 +80,7 @@ const FileUploader = ({ onAnalysisComplete, onError, autoAnalyze = true, onFiles
     try {
       setFiles((prev) => prev.map((f) => (f.id === uploadedFile.id ? { ...f, status: "analyzing" } : f)));
 
-      let result: MultimodalAnalysisResponse;
+      let result: AnalysisResponse;
 
       switch (uploadedFile.type) {
         case "image":
