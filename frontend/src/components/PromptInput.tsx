@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, X, Shield, AlertCircle, Keyboard, CheckCircle2 } from "lucide-react";
+import { Send, X, Shield, AlertCircle, Keyboard, CheckCircle2, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface PromptInputProps {
   value: string;
   onChange: (value: string) => void;
-  onSubmit: () => void;
+  onSubmit: (enablePhase2: boolean) => void;
   isAnalyzing: boolean;
   maxLength?: number;
 }
@@ -20,6 +20,14 @@ const PromptInput = ({
 }: PromptInputProps) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isFocused, setIsFocused] = useState(false);
+  const [enablePhase2, setEnablePhase2] = useState(() => {
+    // Load from localStorage
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("promptguard_phase2_enabled");
+      return saved === "true";
+    }
+    return false;
+  });
   const [ripples, setRipples] = useState<{ id: number; x: number; y: number }[]>([]);
 
   const charCount = value.length;
@@ -37,7 +45,7 @@ const PromptInput = ({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && !isAnalyzing && value.trim()) {
       e.preventDefault();
-      onSubmit();
+      onSubmit(enablePhase2);
     }
   };
 
@@ -52,7 +60,16 @@ const PromptInput = ({
       setRipples((prev) => prev.filter((r) => r.id !== id));
     }, 600);
     
-    onSubmit();
+    onSubmit(enablePhase2);
+  };
+
+  const handlePhase2Toggle = () => {
+    const newValue = !enablePhase2;
+    setEnablePhase2(newValue);
+    // Save to localStorage
+    if (typeof window !== "undefined") {
+      localStorage.setItem("promptguard_phase2_enabled", String(newValue));
+    }
   };
 
   return (
@@ -157,7 +174,7 @@ const PromptInput = ({
 
           {/* Footer with enhanced UX */}
           <div className="flex items-center justify-between mt-4 pt-4 border-t border-border/50">
-            {/* Left side - Character counter + status */}
+            {/* Left side - Character counter + status + Phase 2 toggle */}
             <div className="flex items-center gap-4">
               {/* Character counter */}
               <div className="flex items-center gap-2">
@@ -216,6 +233,32 @@ const PromptInput = ({
                   </motion.div>
                 )}
               </AnimatePresence>
+
+              {/* Phase 2 Toggle */}
+              <motion.button
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                onClick={handlePhase2Toggle}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md transition-colors border ${
+                  enablePhase2
+                    ? "bg-purple-500/10 border-purple-500/30 text-purple-600 dark:text-purple-400 hover:bg-purple-500/20"
+                    : "bg-muted/30 border-border/50 text-muted-foreground hover:bg-muted/50"
+                }`}
+                title="Enable advanced multi-dimensional threat analysis"
+              >
+                <Zap className="w-3 h-3" />
+                <span className="text-xs font-medium">Phase 2</span>
+                {enablePhase2 && (
+                  <motion.span
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="inline-block ml-0.5"
+                  >
+                    ✓
+                  </motion.span>
+                )}
+              </motion.button>
             </div>
 
             {/* Right side - Shortcut hint + Submit button */}

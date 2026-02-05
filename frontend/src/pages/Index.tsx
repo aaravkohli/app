@@ -45,6 +45,7 @@ interface AnalysisResult {
   suggestedRewrite?: string;
   threatType?: ThreatType;
   analysisTime?: number;
+  phase2Data?: any;
 }
 
 const Index = () => {
@@ -66,7 +67,7 @@ const Index = () => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [prompt]);
 
-  const analyzePrompt = useCallback(async () => {
+  const analyzePrompt = useCallback(async (enablePhase2: boolean = false) => {
     if (!prompt.trim()) return;
 
     const startTime = performance.now();
@@ -76,7 +77,7 @@ const Index = () => {
 
     try {
       console.log(`🔍 Starting analysis for: "${prompt.substring(0, 50)}..."`);
-      const apiResult = await apiService.analyzePrompt(prompt);
+      const apiResult = await apiService.analyzePrompt(prompt, enablePhase2);
       const analysisTime = Math.round(performance.now() - startTime);
 
       console.log(`✅ Analysis complete. Setting result state.`);
@@ -97,6 +98,14 @@ const Index = () => {
         suggestedRewrite: apiResult.suggestedRewrite,
         threatType: detectThreatType(prompt),
         analysisTime,
+        // Pass Phase 2 data if available
+        phase2Data: enablePhase2 ? {
+          intent_analysis: apiResult.intent_analysis,
+          escalation_analysis: apiResult.escalation_analysis,
+          semantic_analysis: apiResult.semantic_analysis,
+          context_anomalies: apiResult.context_anomalies,
+          user_risk_profile: apiResult.user_risk_profile,
+        } : undefined,
       };
       
       console.log(`   Setting result state:`, newResult);
@@ -181,6 +190,7 @@ const Index = () => {
                     suggestedRewrite={result.suggestedRewrite}
                     threatType={result.threatType}
                     analysisTime={result.analysisTime}
+                    phase2Data={result.phase2Data}
                     onUseSuggestion={handleUseSuggestion}
                   />
                 )}

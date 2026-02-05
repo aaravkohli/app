@@ -26,7 +26,7 @@ def call_llm(prompt: str) -> str:
             prompt,
             generation_config={
                 "temperature": 0.3,
-                "max_output_tokens": 1024
+                "max_output_tokens": 16384
             }
         )
         if response and response.text:

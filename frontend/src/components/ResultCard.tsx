@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
+import Phase2InsightPanel from "@/components/Phase2InsightPanel";
 
 export type ResultStatus = "approved" | "blocked" | null;
 export type ThreatType = 
@@ -26,6 +27,14 @@ export type ThreatType =
   | "general-injection"
   | null;
 
+interface Phase2Data {
+  intent_analysis?: any;
+  escalation_analysis?: any;
+  semantic_analysis?: any;
+  context_anomalies?: any;
+  user_risk_profile?: any;
+}
+
 interface ResultCardProps {
   status: ResultStatus;
   response?: string;
@@ -33,6 +42,7 @@ interface ResultCardProps {
   suggestedRewrite?: string;
   threatType?: ThreatType;
   analysisTime?: number;
+  phase2Data?: Phase2Data;
   onUseSuggestion?: (suggestion: string) => void;
 }
 
@@ -43,6 +53,7 @@ const ResultCard = ({
   suggestedRewrite,
   threatType,
   analysisTime,
+  phase2Data,
   onUseSuggestion,
 }: ResultCardProps) => {
   const [copied, setCopied] = useState(false);
@@ -379,6 +390,17 @@ const ResultCard = ({
                 </motion.div>
               )}
             </>
+          )}
+
+          {/* Phase 2 Insights Panel */}
+          {phase2Data && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+            >
+              <Phase2InsightPanel phase2Data={phase2Data} />
+            </motion.div>
           )}
         </div>
       </motion.div>
