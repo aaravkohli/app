@@ -4,33 +4,53 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
-gemini_model = genai.GenerativeModel("gemini-3-flash-preview")
+api_key = os.environ.get("GOOGLE_API_KEY")
+if not api_key:
+    raise ValueError("GOOGLE_API_KEY environment variable not set")
+genai.configure(api_key=api_key)
+
+# Use available Gemini model
+try:
+    gemini_model = genai.GenerativeModel("gemini-1.5-flash")
+except Exception as e:
+    print(f"Trying gemini-pro instead: {e}")
+    gemini_model = genai.GenerativeModel("gemini-pro")
 from transformers import pipeline
 import re
 from collections import Counter
 
 
 def call_llm(prompt: str) -> str:
-    response = gemini_model.generate_content(
-        prompt,
-        generation_config={
-            "temperature": 0.3,
-            "max_output_tokens": 16384
-        }
-    )
-    return response.text
+    try:
+        response = gemini_model.generate_content(
+            prompt,
+            generation_config={
+                "temperature": 0.3,
+                "max_output_tokens": 1024
+            }
+        )
+        return response.text
+    except Exception as e:
+        print(f"LLM Error: {str(e)}")
+        raise Exception(f"Failed to generate response: {str(e)}")
 
 # =========================
-# Load model
+# Load model (lazy loading)
 # =========================
-guard = pipeline(
-    "text-classification",
-    model="ProtectAI/deberta-v3-base-prompt-injection-v2",
-    truncation=True,
-    max_length=512,
-    device=-1  # CPU-safe
-)
+guard = None
+
+def get_guard():
+    global guard
+    if guard is None:
+        from transformers import pipeline
+        guard = pipeline(
+            "text-classification",
+            model="ProtectAI/deberta-v3-base-prompt-injection-v2",
+            truncation=True,
+            max_length=512,
+            device=-1  # CPU-safe
+        )
+    return guard
 
 # =========================
 # Static lexical signals
@@ -120,17 +140,24 @@ def lexical_benign_score(prompt: str) -> float:
 # ML ensemble
 # =========================
 def ml_risk(prompt: str) -> float:
+    # Lazy load the guard model
+    guard_model = get_guard()
+    
     # Analyze the prompt directly with the guard model
     # The original approach was broken - it would return near-1.0 for everything
     # because the model returns high confidence scores for both SAFE and INJECTION labels
-    result = guard(prompt)[0]
-    
-    # Return the injection risk score only if labeled as INJECTION
-    # Otherwise return a low risk score (0.0) for SAFE prompts
-    if result["label"] == "INJECTION":
-        return result["score"]
-    else:
-        return 0.0
+    try:
+        result = guard_model(prompt)[0]
+        
+        # Return the injection risk score only if labeled as INJECTION
+        # Otherwise return a low risk score (0.0) for SAFE prompts
+        if result["label"] == "INJECTION":
+            return result["score"]
+        else:
+            return 0.0
+    except Exception as e:
+        print(f"ML Risk check failed: {e}")
+        return 0.1  # Default to low risk on error
 
 # =========================
 # Adaptive update (online learning)
