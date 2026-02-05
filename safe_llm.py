@@ -161,15 +161,18 @@ def ml_risk(prompt: str) -> float:
     # because the model returns high confidence scores for both SAFE and INJECTION labels
     try:
         result = guard_model(prompt)[0]
+        print(f"🤖 ML Model result: Label={result['label']}, Score={result['score']:.3f}")
         
         # Return the injection risk score only if labeled as INJECTION
         # Otherwise return a low risk score (0.0) for SAFE prompts
         if result["label"] == "INJECTION":
+            print(f"⚠️ ML Risk Score: {result['score']:.3f} (INJECTION)")
             return result["score"]
         else:
+            print(f"✅ ML Risk Score: 0.0 (SAFE)")
             return 0.0
     except Exception as e:
-        print(f"ML Risk check failed: {e}")
+        print(f"❌ ML Risk check failed: {e}")
         return 0.1  # Default to low risk on error
 
 # =========================
@@ -202,14 +205,24 @@ def sanitize_output():
 # =========================
 def final_risk(prompt: str) -> dict:
     p = normalize(prompt)
+    print(f"\n📊 RISK ANALYSIS START")
+    print(f"   Original: {prompt[:80]}")
+    print(f"   Normalized: {p[:80]}")
 
     lexical_risk = lexical_attack_score(p)
     benign_offset = lexical_benign_score(p)
     ml_score = ml_risk(prompt)
 
+    print(f"   Lexical Risk: {lexical_risk:.3f}")
+    print(f"   Benign Offset: {benign_offset:.3f}")
+    print(f"   ML Score: {ml_score:.3f}")
+
     # calibrated aggregation (balanced, not paranoid)
     risk = (0.5 * ml_score) + (0.5 * lexical_risk) - benign_offset
     risk = max(min(risk, 1.0), 0.0)
+    
+    print(f"   Final Risk: {risk:.3f}")
+    print(f"📊 RISK ANALYSIS END\n")
 
     return {
         "risk": round(risk, 3),

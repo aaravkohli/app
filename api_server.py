@@ -74,23 +74,29 @@ def analyze():
     try:
         # Validate request
         if not request.is_json:
+            logger.error("Request is not JSON")
             return jsonify({"error": "Request must be JSON"}), 400
         
         data = request.get_json()
         prompt = data.get("prompt", "").strip()
         
+        logger.info(f"📬 Received request with prompt: {prompt[:60]}...")
+        
         if not prompt:
+            logger.warning("Empty prompt received")
             return jsonify({"error": "Prompt cannot be empty"}), 400
         
         if len(prompt) > 2000:
+            logger.warning(f"Prompt exceeds limit: {len(prompt)} chars")
             return jsonify({"error": "Prompt exceeds 2000 character limit"}), 400
         
         # Start timer
         start_time = time.time()
         
         # Analyze prompt
-        logger.info(f"Analyzing prompt: {prompt[:50]}...")
+        logger.info(f"🔍 Starting analysis...")
         analysis = final_risk(prompt)
+        logger.info(f"✅ Analysis complete - Risk: {analysis['risk']}, ML Score: {analysis['ml_score']}, Lexical: {analysis['lexical_risk']}")
         
         # Determine status based on risk score
         risk_score = analysis["risk"]

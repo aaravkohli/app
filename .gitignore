@@ -29,10 +29,12 @@ share/python-wheels/
 MANIFEST
 
 # Virtual environments
+.venv/
+.venv311/
 venv/
 ENV/
 env/
-.venv
+.env
 
 # IDEs
 .vscode/

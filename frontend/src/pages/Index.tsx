@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import PromptInput from "@/components/PromptInput";
+import FileUploader from "@/components/FileUploader";
 import RiskMeter, { RiskLevel } from "@/components/RiskMeter";
 import RiskBreakdown from "@/components/RiskBreakdown";
 import ResultCard, { ResultStatus, ThreatType } from "@/components/ResultCard";
@@ -46,6 +47,7 @@ interface AnalysisResult {
   threatType?: ThreatType;
   analysisTime?: number;
   phase2Data?: any;
+  combinedAnalysis?: any; // for prompt + file combined analysis
 }
 
 const Index = () => {
@@ -53,6 +55,7 @@ const Index = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[] | null>(null);
 
   // Keyboard shortcut for Escape to clear
   useEffect(() => {
@@ -65,7 +68,7 @@ const Index = () => {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [prompt]);
+  }, [prompt, selectedFiles]);
 
   const analyzePrompt = useCallback(async (enablePhase2: boolean = false) => {
     if (!prompt.trim()) return;
@@ -77,37 +80,90 @@ const Index = () => {
 
     try {
       console.log(`🔍 Starting analysis for: "${prompt.substring(0, 50)}..."`);
-      const apiResult = await apiService.analyzePrompt(prompt, enablePhase2);
+
+      // If user has selected files to upload together with the prompt, send multipart request
+      let apiResult: any;
+      if (selectedFiles && selectedFiles.length > 0) {
+        const API_BASE = "http://localhost:5000";
+        const formData = new FormData();
+        formData.append("text", prompt);
+        for (const f of selectedFiles) {
+          formData.append("file", f);
+        }
+
+        const resp = await fetch(`${API_BASE}/api/analyze/multimodal`, {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!resp.ok) {
+          throw new Error(`API responded with status ${resp.status}`);
+        }
+
+        apiResult = await resp.json();
+        // clear selected files after sending
+        setSelectedFiles(null);
+      } else {
+        apiResult = await apiService.analyzePrompt(prompt, enablePhase2);
+      }
       const analysisTime = Math.round(performance.now() - startTime);
 
       console.log(`✅ Analysis complete. Setting result state.`);
       console.log(`   Response preview: ${apiResult.response?.substring(0, 50)}...`);
 
-      // Convert API response to UI result format
-      const riskLevel = apiResult.analysis.risk > 0.6 ? "high" : apiResult.analysis.risk > 0.3 ? "medium" : "low";
-      
-      const newResult = {
-        riskLevel: riskLevel as RiskLevel,
-        riskScore: Math.round(apiResult.analysis.risk * 100),
-        mlRisk: Math.round(apiResult.analysis.ml_score * 100),
-        lexicalRisk: Math.round(apiResult.analysis.lexical_risk * 100),
-        benignOffset: Math.round(apiResult.analysis.benign_offset * 100),
-        status: apiResult.status as ResultStatus,
-        response: apiResult.response,
-        blockReason: apiResult.blockReason || "Security policy violation detected",
-        suggestedRewrite: apiResult.suggestedRewrite,
-        threatType: detectThreatType(prompt),
-        analysisTime,
-        // Pass Phase 2 data if available
-        phase2Data: enablePhase2 ? {
+      // Normalize API response (multimodal vs text analyzer)
+      let normalized: any;
+      if (apiResult && typeof apiResult.risk_level !== "undefined") {
+        // Multimodal response with combined analysis
+        const risk = apiResult.risk_score ?? 0;
+        normalized = {
+          status: risk > 0.6 ? "blocked" : "approved",
+          response: apiResult.response,
+          analysis: {
+            risk,
+            ml_score: apiResult.ml_score ?? 0,
+            lexical_risk: apiResult.lexical_risk ?? 0,
+            benign_offset: apiResult.benign_offset ?? 0,
+            adaptive_phrases: apiResult.adaptive_phrases ?? 0,
+          },
           intent_analysis: apiResult.intent_analysis,
           escalation_analysis: apiResult.escalation_analysis,
           semantic_analysis: apiResult.semantic_analysis,
           context_anomalies: apiResult.context_anomalies,
           user_risk_profile: apiResult.user_risk_profile,
+          blockReason: apiResult.error || undefined,
+          combinedAnalysis: apiResult.combined_analysis,
+          message: apiResult.message,
+        };
+      } else {
+        normalized = apiResult;
+      }
+
+      const riskLevel = normalized.analysis.risk > 0.6 ? "high" : normalized.analysis.risk > 0.3 ? "medium" : "low";
+
+      const newResult = {
+        riskLevel: riskLevel as RiskLevel,
+        riskScore: Math.round(normalized.analysis.risk * 100),
+        mlRisk: Math.round((normalized.analysis.ml_score ?? 0) * 100),
+        lexicalRisk: Math.round((normalized.analysis.lexical_risk ?? 0) * 100),
+        benignOffset: Math.round((normalized.analysis.benign_offset ?? 0) * 100),
+        status: normalized.status as ResultStatus,
+        response: normalized.response || normalized.message,
+        blockReason: normalized.blockReason || "Security policy violation detected",
+        suggestedRewrite: normalized.suggestedRewrite,
+        threatType: detectThreatType(prompt),
+        analysisTime,
+        phase2Data: enablePhase2 ? {
+          intent_analysis: normalized.intent_analysis,
+          escalation_analysis: normalized.escalation_analysis,
+          semantic_analysis: normalized.semantic_analysis,
+          context_anomalies: normalized.context_anomalies,
+          user_risk_profile: normalized.user_risk_profile,
         } : undefined,
+        // Add combined file analysis details if present
+        combinedAnalysis: normalized.combinedAnalysis,
       };
-      
+
       console.log(`   Setting result state:`, newResult);
       setResult(newResult);
     } catch (error) {
@@ -127,12 +183,38 @@ const Index = () => {
     } finally {
       setIsAnalyzing(false);
     }
-  }, [prompt]);
+  }, [prompt, selectedFiles]);
+
 
   const handleExampleSelect = (examplePrompt: string) => {
     setPrompt(examplePrompt);
     setShowAnalysis(false);
     setResult(null);
+  };
+
+  const handleFileAnalysis = (fileResult: any) => {
+    // Map multimodal analysis response into the UI's AnalysisResult shape
+    const riskScore = Math.round((fileResult.risk_score ?? 0) * 100);
+    const riskLevel: RiskLevel = fileResult.risk_level === "low" ? "low" : fileResult.risk_level === "medium" ? "medium" : "high";
+    const status: ResultStatus = fileResult.risk_level === "low" || fileResult.risk_level === "medium" ? "approved" : "blocked";
+
+    const newResult: AnalysisResult = {
+      riskLevel,
+      riskScore,
+      mlRisk: 0,
+      lexicalRisk: 0,
+      benignOffset: 0,
+      status: status,
+      response: undefined,
+      blockReason: fileResult.error || (status === "blocked" ? "Security policy triggered for uploaded file." : undefined),
+      suggestedRewrite: undefined,
+      threatType: fileResult.input_type || undefined,
+      analysisTime: Math.round(fileResult.analysis_time ?? 0),
+      phase2Data: fileResult.details,
+    };
+
+    setResult(newResult);
+    setShowAnalysis(true);
   };
 
   const handleUseSuggestion = (suggestion: string) => {
@@ -177,6 +259,21 @@ const Index = () => {
               <ExamplePrompts
                 onSelect={handleExampleSelect}
                 disabled={isAnalyzing}
+              />
+
+              <FileUploader
+                onAnalysisComplete={handleFileAnalysis}
+                onError={(err) => setResult({
+                  riskLevel: "high",
+                  riskScore: 0,
+                  mlRisk: 0,
+                  lexicalRisk: 0,
+                  benignOffset: 0,
+                  status: "error" as any,
+                  blockReason: `File analysis failed: ${err}`
+                })}
+                autoAnalyze={false}
+                onFilesSelected={(files) => setSelectedFiles(files)}
               />
 
               {/* Result card */}
