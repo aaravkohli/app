@@ -11,10 +11,10 @@ genai.configure(api_key=api_key)
 
 # Use available Gemini model
 try:
-    gemini_model = genai.GenerativeModel("gemini-1.5-flash")
-except Exception as e:
-    print(f"Trying gemini-pro instead: {e}")
     gemini_model = genai.GenerativeModel("gemini-pro")
+except Exception as e:
+    print(f"Model initialization error: {e}")
+    raise
 from transformers import pipeline
 import re
 from collections import Counter
