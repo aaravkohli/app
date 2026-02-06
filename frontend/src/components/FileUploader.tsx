@@ -37,6 +37,12 @@ const FileUploader = ({ onAnalysisComplete, onError, autoAnalyze = true, onFiles
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const resetFileInput = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   const getFileType = (file: File): UploadedFile["type"] => {
     const ext = file.name.split(".").pop()?.toLowerCase() || "";
 
@@ -126,6 +132,7 @@ const FileUploader = ({ onAnalysisComplete, onError, autoAnalyze = true, onFiles
       }));
 
       setFiles((prev) => [...prev, ...newFiles]);
+      resetFileInput();
       return;
     }
 
@@ -140,6 +147,7 @@ const FileUploader = ({ onAnalysisComplete, onError, autoAnalyze = true, onFiles
 
     // Auto-analyze files
     newFiles.forEach((f) => analyzeSingleFile(f));
+    resetFileInput();
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -157,6 +165,7 @@ const FileUploader = ({ onAnalysisComplete, onError, autoAnalyze = true, onFiles
     e.preventDefault();
     setIsDragging(false);
     handleFiles(e.dataTransfer.files);
+    resetFileInput();
   };
 
   const removeFile = (id: string) => {
@@ -177,6 +186,12 @@ const FileUploader = ({ onAnalysisComplete, onError, autoAnalyze = true, onFiles
         return "text-gray-600 bg-gray-50";
     }
   };
+
+  const pendingCount = files.filter((f) => f.status === "pending").length;
+  const uploadingCount = files.filter((f) => f.status === "uploading").length;
+  const analyzingCount = files.filter((f) => f.status === "analyzing").length;
+  const completeCount = files.filter((f) => f.status === "complete").length;
+  const errorCount = files.filter((f) => f.status === "error").length;
 
   return (
     <div className="w-full space-y-4">
@@ -233,6 +248,18 @@ const FileUploader = ({ onAnalysisComplete, onError, autoAnalyze = true, onFiles
             exit={{ opacity: 0, y: -10 }}
             className="space-y-2"
           >
+            <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
+              <span>
+                {uploadingCount + analyzingCount > 0
+                  ? `Processing ${uploadingCount + analyzingCount} file(s)...`
+                  : pendingCount > 0
+                  ? `Ready to analyze ${pendingCount} file(s)`
+                  : `Completed ${completeCount} file(s)${errorCount ? `, ${errorCount} error(s)` : ""}`}
+              </span>
+              <span>
+                {files.length} total
+              </span>
+            </div>
             {files.map((uploadedFile) => (
               <motion.div
                 key={uploadedFile.id}

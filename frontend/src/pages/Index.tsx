@@ -61,7 +61,7 @@ const Index = () => {
   }, []);
 
   const analyzePrompt = useCallback(async (enablePhase2 = false) => {
-    if (!prompt.trim()) return;
+    if (!prompt.trim() && !selectedFiles?.length) return;
 
     const startTime = performance.now();
     setIsAnalyzing(true);
@@ -72,17 +72,7 @@ const Index = () => {
       let apiResult: any;
 
       if (selectedFiles?.length) {
-        const formData = new FormData();
-        formData.append("text", prompt);
-        selectedFiles.forEach(f => formData.append("file", f));
-
-        const resp = await fetch("http://localhost:5000/api/analyze/multimodal", {
-          method: "POST",
-          body: formData
-        });
-
-        if (!resp.ok) throw new Error(`API error ${resp.status}`);
-        apiResult = await resp.json();
+        apiResult = await apiService.analyzeFile(selectedFiles, prompt);
         setSelectedFiles(null);
       } else {
         apiResult = await apiService.analyzePrompt(prompt, enablePhase2);
@@ -116,7 +106,7 @@ const Index = () => {
         status: normalized.status,
         response: normalized.response,
         blockReason: normalized.blockReason,
-        threatType: detectThreatType(prompt),
+        threatType: prompt.trim() ? detectThreatType(prompt) : null,
         analysisTime,
         phase2Data: normalized,
         combinedAnalysis: normalized.combinedAnalysis,
@@ -154,10 +144,13 @@ const Index = () => {
               onChange={setPrompt}
               onSubmit={analyzePrompt}
               isAnalyzing={isAnalyzing}
+              canSubmit={!!selectedFiles?.length}
             />
 
             <FileUploader
-              onFilesSelected={(f)=>setSelectedFiles(f)}
+              onFilesSelected={(f) =>
+                setSelectedFiles((prev) => (prev ? [...prev, ...f] : [...f]))
+              }
               autoAnalyze={false}
             />
 

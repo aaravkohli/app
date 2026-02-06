@@ -1,7 +1,26 @@
 import { motion } from "framer-motion";
-import { Shield, Github, Lock, CheckCircle2 } from "lucide-react";
+import { Shield, Github, Lock, CheckCircle2, Wifi, WifiOff } from "lucide-react";
+import { useState, useEffect } from "react";
+import { apiService } from "@/lib/apiService";
 
 const Header = () => {
+  const [isBackendConnected, setIsBackendConnected] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const checkConnection = async () => {
+      try {
+        const connected = await apiService.healthCheck();
+        setIsBackendConnected(connected);
+      } catch {
+        setIsBackendConnected(false);
+      }
+    };
+
+    checkConnection();
+    const interval = setInterval(checkConnection, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <motion.header
       initial={{ opacity: 0, y: -20 }}
@@ -49,6 +68,60 @@ const Header = () => {
 
       {/* Right side */}
       <div className="flex items-center gap-3">
+        {/* Backend Connection Status */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2 }}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${
+            isBackendConnected === null
+              ? "bg-muted/30 border-border/50"
+              : isBackendConnected
+              ? "bg-green-500/10 border-green-500/30"
+              : "bg-red-500/10 border-red-500/30"
+          }`}
+          title={
+            isBackendConnected === null
+              ? "Checking connection..."
+              : isBackendConnected
+              ? "Backend connected"
+              : "Backend disconnected"
+          }
+        >
+          {isBackendConnected === null ? (
+            <>
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              >
+                <Wifi className="w-3.5 h-3.5 text-muted-foreground" />
+              </motion.div>
+              <span className="text-xs font-medium text-muted-foreground hidden sm:inline">
+                Checking...
+              </span>
+            </>
+          ) : isBackendConnected ? (
+            <>
+              <div className="relative">
+                <div className="absolute inset-0 bg-green-500 rounded-full blur-sm animate-pulse opacity-50" />
+                <div className="relative w-2 h-2 rounded-full bg-green-500" />
+              </div>
+              <Wifi className="w-3.5 h-3.5 text-green-600" />
+              <span className="text-xs font-medium text-green-600 hidden sm:inline">
+                Connected
+              </span>
+            </>
+          ) : (
+            <>
+              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              <WifiOff className="w-3.5 h-3.5 text-red-600" />
+              <span className="text-xs font-medium text-red-600 hidden sm:inline">
+                Offline
+              </span>
+            </>
+          )}
+        </motion.div>
+
         {/* Mobile security indicator */}
         <div className="md:hidden flex items-center gap-2 px-3 py-1.5 rounded-full bg-safe/10 border border-safe/20">
           <div className="w-2 h-2 rounded-full bg-safe animate-pulse" />
