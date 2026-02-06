@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { apiService, AnalysisResponse } from "@/lib/apiService";
+import { apiService, AnalysisResponse } from "@/lib/apiService.ts";
 
 interface FileUploaderProps {
   onAnalysisComplete?: (result: AnalysisResponse) => void;

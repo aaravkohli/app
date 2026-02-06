@@ -11,7 +11,7 @@ import ExamplePrompts from "@/components/ExamplePrompts";
 import SecurityBadge from "@/components/SecurityBadge";
 import SecurityConfidence from "@/components/SecurityConfidence";
 import VigilScannerResult from "@/components/VigilScannerResult";
-import { apiService } from "@/lib/apiService";
+import { apiService } from "@/lib/apiService.ts";
 import { Shield, ArrowRight } from "lucide-react";
 
 const detectThreatType = (prompt: string): ThreatType => {

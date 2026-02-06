@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { Shield, Github, Lock, CheckCircle2, Wifi, WifiOff } from "lucide-react";
 import { useState, useEffect } from "react";
-import { apiService } from "@/lib/apiService";
+import { apiService } from "@/lib/apiService.ts";
 
 const Header = () => {
   const [isBackendConnected, setIsBackendConnected] = useState<boolean | null>(null);
