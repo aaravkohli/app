@@ -9,7 +9,7 @@ from datetime import datetime
 from contextlib import asynccontextmanager
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Request, Query
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.openapi.utils import get_openapi
@@ -29,6 +29,7 @@ from promptguard.security_engine.detector import AsyncSecurityDetector
 from promptguard.security_engine.phase2_detector import Phase2SecurityDetector
 from promptguard.cache.caching import CacheStrategy, RequestDeduplicator
 from promptguard.observability.metrics import MetricsCollector
+from promptguard.auth import initialize_firebase, optional_firebase_auth, FirebaseUser
 
 # Setup logging
 logging.basicConfig(level=settings.LOG_LEVEL)
@@ -58,6 +59,10 @@ async def lifespan(app: FastAPI):
     logger.info(f"Environment: {settings.ENVIRONMENT}")
     
     try:
+        # Initialize Firebase Authentication
+        logger.info("Initializing Firebase Authentication...")
+        initialize_firebase()
+        
         # Initialize Phase 1 detector
         logger.info("Initializing Phase 1 security detector...")
         detector = AsyncSecurityDetector(settings)
