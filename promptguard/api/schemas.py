@@ -307,6 +307,57 @@ class ContentRiskAnalysis(BaseModel):
     )
 
 
+class VigilScannerResult(BaseModel):
+    """Vigil scanner detection result"""
+    
+    scanner: str = Field(
+        description="Scanner type: similarity, yara, transformer, sentiment, relevance, canary"
+    )
+    detected: bool = Field(
+        description="Whether threat was detected"
+    )
+    confidence: float = Field(
+        ge=0.0,
+        le=1.0,
+        description="Detection confidence score"
+    )
+    details: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Scanner-specific details"
+    )
+    timestamp: str = Field(
+        description="Detection timestamp"
+    )
+
+
+class VigilAnalysisResponse(BaseModel):
+    """Vigil-LLM multi-scanner analysis results"""
+    
+    scanners: Dict[str, VigilScannerResult] = Field(
+        description="Results from each Vigil scanner"
+    )
+    detections: List[str] = Field(
+        default_factory=list,
+        description="List of detected threat types"
+    )
+    risk_indicators: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Flagged risk indicators from scanners"
+    )
+    aggregated_risk: float = Field(
+        ge=0.0,
+        le=1.0,
+        description="Aggregated risk score from all scanners"
+    )
+    timestamp: str = Field(
+        description="Analysis timestamp"
+    )
+    unavailable: bool = Field(
+        default=False,
+        description="Whether Vigil was unavailable"
+    )
+
+
 class ContextRiskAnalysis(BaseModel):
     """Conversation context risk"""
     
@@ -329,7 +380,7 @@ class ThreatAnalysisDetail(BaseModel):
 
 
 class AnalysisResponse(BaseModel):
-    """Response for analysis endpoint (now with Phase 2 multi-dimensional threat analysis)"""
+    """Response for analysis endpoint (now with Phase 2 multi-dimensional threat analysis + Vigil-LLM)"""
     
     status: DecisionAction = Field(
         description="Security decision"
@@ -347,6 +398,9 @@ class AnalysisResponse(BaseModel):
     analysis: ThreatAnalysisDetail = Field(
         description="Detailed threat analysis"
     )
+    
+    # Vigil-LLM: Multi-scanner prompt injection detection
+    vigil_analysis: Optional[VigilAnalysisResponse] = None
     
     # Phase 2: Multi-dimensional threat analysis
     intent_analysis: Optional[IntentAnalysisResponse] = None
