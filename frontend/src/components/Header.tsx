@@ -1,10 +1,45 @@
 import { motion } from "framer-motion";
-import { Shield, Github, Lock, CheckCircle2, Wifi, WifiOff } from "lucide-react";
+import { Shield, Github, Lock, CheckCircle2, Wifi, WifiOff, LogOut, User } from "lucide-react";
 import { useState, useEffect } from "react";
 import { apiService } from "@/lib/apiService.ts";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useNavigate } from "react-router-dom";
 
 const Header = () => {
   const [isBackendConnected, setIsBackendConnected] = useState<boolean | null>(null);
+  const { currentUser, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate("/login");
+    } catch (error) {
+      console.error("Failed to log out:", error);
+    }
+  };
+
+  const getUserInitials = () => {
+    if (currentUser?.displayName) {
+      return currentUser.displayName
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2);
+    }
+    return currentUser?.email?.[0]?.toUpperCase() || "U";
+  };
 
   useEffect(() => {
     const checkConnection = async () => {
@@ -127,6 +162,39 @@ const Header = () => {
           <div className="w-2 h-2 rounded-full bg-safe animate-pulse" />
           <span className="text-xs font-medium text-safe">Protected</span>
         </div>
+
+        {/* User Menu */}
+        {currentUser && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+                <Avatar className="h-9 w-9">
+                  <AvatarImage src={currentUser.photoURL || undefined} alt={currentUser.displayName || "User"} />
+                  <AvatarFallback className="bg-primary/10 text-primary">
+                    {getUserInitials()}
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56" align="end" forceMount>
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">
+                    {currentUser.displayName || "User"}
+                  </p>
+                  <p className="text-xs leading-none text-muted-foreground">
+                    {currentUser.email}
+                  </p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
         
         <a
           href="https://github.com"

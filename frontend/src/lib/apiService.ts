@@ -3,7 +3,29 @@
  * Handles all communication with the backend safe_llm API server
  */
 
+import { auth } from './firebase';
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
+/**
+ * Get authentication headers with Firebase ID token
+ */
+async function getAuthHeaders(): Promise<HeadersInit> {
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+  };
+  
+  if (auth.currentUser) {
+    try {
+      const token = await auth.currentUser.getIdToken();
+      headers['Authorization'] = `Bearer ${token}`;
+    } catch (error) {
+      console.error("Failed to get auth token:", error);
+    }
+  }
+  
+  return headers;
+}
 
 interface AnalysisResponse {
   status: "approved" | "blocked";
@@ -50,7 +72,7 @@ export const apiService = {
     try {
       const response = await fetch(`${API_BASE_URL}/health`, {
         method: "GET",
-        headers: { "Content-Type": "application/json" },
+        headers: await getAuthHeaders(),
       });
       return response.ok;
     } catch (error) {
@@ -83,7 +105,7 @@ export const apiService = {
 
       const response = await fetch(url.toString(), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({ prompt }),
       });
 
@@ -126,7 +148,7 @@ export const apiService = {
     try {
       const response = await fetch(`${API_BASE_URL}/analyze/risk`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({ prompt }),
       });
 
@@ -161,7 +183,7 @@ export const apiService = {
     try {
       const response = await fetch(`${API_BASE_URL}/analyze/batch`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({ prompts }),
       });
 
@@ -193,8 +215,20 @@ export const apiService = {
     }
 
     try {
+      // For file uploads, we need to get auth headers without Content-Type
+      const authHeaders: HeadersInit = {};
+      if (auth.currentUser) {
+        try {
+          const token = await auth.currentUser.getIdToken();
+          authHeaders['Authorization'] = `Bearer ${token}`;
+        } catch (error) {
+          console.error("Failed to get auth token:", error);
+        }
+      }
+
       const response = await fetch(`${API_BASE_URL}/analyze/file`, {
         method: "POST",
+        headers: authHeaders,
         body: formData,
       });
 
