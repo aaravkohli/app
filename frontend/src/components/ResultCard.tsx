@@ -40,6 +40,13 @@ interface ResultCardProps {
   response?: string;
   blockReason?: string;
   suggestedRewrite?: string;
+  sanitizedPrompt?: {
+    text: string;
+    notes: string;
+    timeMs?: number;
+    issuesAddressed?: string[];
+    fallback?: boolean;
+  };
   threatType?: ThreatType;
   analysisTime?: number;
   phase2Data?: Phase2Data;
@@ -51,6 +58,7 @@ const ResultCard = ({
   response,
   blockReason,
   suggestedRewrite,
+  sanitizedPrompt,
   threatType,
   analysisTime,
   phase2Data,
@@ -359,8 +367,98 @@ const ResultCard = ({
                 </AnimatePresence>
               </motion.div>
 
-              {/* Suggested rewrite */}
-              {suggestedRewrite && (
+              {/* Sanitized prompt suggestion (NEW - auto-generated safe version) */}
+              {sanitizedPrompt && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.35 }}
+                  className={`mt-4 p-4 rounded-lg border ${
+                    sanitizedPrompt.fallback 
+                      ? "bg-amber-500/5 border-amber-500/20" 
+                      : "bg-emerald-500/5 border-emerald-500/20"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`p-2 rounded-lg ${
+                      sanitizedPrompt.fallback 
+                        ? "bg-amber-500/10" 
+                        : "bg-emerald-500/10"
+                    }`}>
+                      <Wand2 className={`w-5 h-5 ${
+                        sanitizedPrompt.fallback 
+                          ? "text-amber-500" 
+                          : "text-emerald-500"
+                      } animate-pulse`} />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
+                        <Sparkles className={`w-4 h-4 ${
+                          sanitizedPrompt.fallback 
+                            ? "text-amber-500" 
+                            : "text-emerald-500"
+                        }`} />
+                        {sanitizedPrompt.fallback 
+                          ? "Safe Alternative Suggestion" 
+                          : "AI-Generated Safe Version"}
+                      </h4>
+                      <p className="text-xs text-muted-foreground mb-3">
+                        {sanitizedPrompt.notes}
+                        {sanitizedPrompt.timeMs && !sanitizedPrompt.fallback && (
+                          <span className="ml-1 text-primary">
+                            • Generated in {sanitizedPrompt.timeMs}ms
+                          </span>
+                        )}
+                      </p>
+                      
+                      {/* Issues addressed */}
+                      {sanitizedPrompt.issuesAddressed && sanitizedPrompt.issuesAddressed.length > 0 && (
+                        <div className="mb-3 p-2 bg-muted/30 rounded-md">
+                          <p className="text-xs font-medium text-muted-foreground mb-1">
+                            🛡️ Issues Removed:
+                          </p>
+                          <ul className="text-xs text-muted-foreground space-y-0.5 ml-2">
+                            {sanitizedPrompt.issuesAddressed.map((issue, idx) => (
+                              <li key={idx} className="flex items-start gap-1">
+                                <Check className="w-3 h-3 text-emerald-500 mt-0.5 flex-shrink-0" />
+                                <span>{issue}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      {/* Sanitized prompt text */}
+                      <div className={`rounded-md p-3 mb-3 text-sm border ${
+                        sanitizedPrompt.fallback
+                          ? "bg-amber-50/50 dark:bg-amber-950/20 border-amber-200/50 dark:border-amber-800/50"
+                          : "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200/50 dark:border-emerald-800/50"
+                      }`}>
+                        <p className="text-foreground italic leading-relaxed">
+                          "{sanitizedPrompt.text}"
+                        </p>
+                      </div>
+                      
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => onUseSuggestion?.(sanitizedPrompt.text)}
+                        className={`text-xs ${
+                          sanitizedPrompt.fallback 
+                            ? "hover:bg-amber-500/10" 
+                            : "hover:bg-emerald-500/10"
+                        }`}
+                      >
+                        <Wand2 className="w-3 h-3 mr-1" />
+                        Use this safe version
+                      </Button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Legacy suggested rewrite (fallback for backward compatibility) */}
+              {!sanitizedPrompt && suggestedRewrite && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}

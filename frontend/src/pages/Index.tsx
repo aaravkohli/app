@@ -35,6 +35,13 @@ interface AnalysisResult {
   response?: string;
   blockReason?: string;
   suggestedRewrite?: string;
+  sanitizedPrompt?: {
+    text: string;
+    notes: string;
+    timeMs?: number;
+    issuesAddressed?: string[];
+    fallback?: boolean;
+  };
   threatType?: ThreatType;
   analysisTime?: number;
   phase2Data?: any;
@@ -106,6 +113,7 @@ const Index = () => {
         status: normalized.status,
         response: normalized.response,
         blockReason: normalized.blockReason,
+        sanitizedPrompt: normalized.sanitizedPrompt, // NEW: Include sanitized prompt
         threatType: prompt.trim() ? detectThreatType(prompt) : null,
         analysisTime,
         phase2Data: normalized,
@@ -113,19 +121,27 @@ const Index = () => {
       });
 
     } catch (err: any) {
+      console.error("Analysis error:", err);
       setResult({
         riskLevel: "high",
         riskScore: 0,
         mlRisk: 0,
         lexicalRisk: 0,
         benignOffset: 0,
-        status: "error" as any,
-        blockReason: err.message
+        status: "blocked",
+        blockReason: `Connection error: ${err.message || "Unable to reach the API server. Please ensure the backend is running on port 5000."}`
       });
     } finally {
       setIsAnalyzing(false);
     }
   }, [prompt, selectedFiles]);
+  
+  // Handler for using sanitized prompt suggestion
+  const handleUseSuggestion = useCallback((suggestion: string) => {
+    setPrompt(suggestion);
+    setResult(null);
+    setShowAnalysis(false);
+  }, []);
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
@@ -158,7 +174,7 @@ const Index = () => {
 
             <AnimatePresence mode="wait">
               {result?.status && (
-                <ResultCard {...result} />
+                <ResultCard {...result} onUseSuggestion={handleUseSuggestion} />
               )}
             </AnimatePresence>
 

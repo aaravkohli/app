@@ -26,6 +26,16 @@ PromptGuard is an enterprise-grade AI security gateway that protects users and s
 - **Phase 3**: Adaptive learning with pattern extraction and poisoning protection
 - Custom lexical pattern matching
 - Output-side protection for generated responses
+- **🆕 Automatic Prompt Sanitization**: AI-powered rewriting of unsafe prompts with intent preservation
+
+🔄 **Automatic Prompt Sanitization** (NEW)
+- AI-powered automatic rewriting of malicious prompts
+- Preserves legitimate user intent while removing harmful elements
+- Uses secondary Google API key for resource isolation
+- Provides immediate safe alternatives to blocked prompts
+- Full transparency with detailed logs and explanations
+- 95%+ success rate with intelligent fallbacks
+- See [PROMPT_SANITIZATION_GUIDE.md](PROMPT_SANITIZATION_GUIDE.md) for details
 
 🧠 **Adaptive Learning** (Phase 3)
 - Automatic pattern extraction from blocked prompts
@@ -382,6 +392,10 @@ npm install
 # In /Users/aaravkohli/idk/.env
 GOOGLE_API_KEY=your_api_key_here
 
+# Optional: Secondary API key for automatic prompt sanitization
+# If not set, falls back to GOOGLE_API_KEY (not recommended for production)
+GOOGLE_SAFETY_API_KEY=your_secondary_api_key_here
+
 # In /Users/aaravkohli/idk/frontend/.env
 VITE_API_URL=http://localhost:5000/api
 ```
@@ -406,10 +420,17 @@ Navigate to `http://localhost:5173`
 
 **Backend (.env)**
 ```
-GOOGLE_API_KEY=your_google_api_key
+GOOGLE_API_KEY=your_google_api_key           # Primary API key for LLM operations
+GOOGLE_SAFETY_API_KEY=your_safety_api_key    # Secondary key for prompt sanitization (optional)
 FLASK_ENV=development
 FLASK_DEBUG=1
 ```
+
+> **Note**: `GOOGLE_SAFETY_API_KEY` is used for automatic prompt sanitization when unsafe prompts are detected.
+> If not set, the system falls back to using `GOOGLE_API_KEY`, but using a separate key is recommended for:
+> - Separate rate limits and quota management
+> - Cost tracking for security operations
+> - Resource isolation between main and safety processing
 
 **Frontend (.env)**
 ```

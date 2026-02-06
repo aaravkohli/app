@@ -2,6 +2,7 @@
 import google.generativeai as genai
 import os
 from dotenv import load_dotenv
+from prompt_sanitizer import sanitize_prompt, log_sanitization
 
 load_dotenv()
 api_key = os.environ.get("GOOGLE_API_KEY")
@@ -263,3 +264,73 @@ def safe_generate(user_prompt: str) -> str:
         f"Details: {analysis}\n\n"
         + llm_response
     )
+
+
+# =========================
+# Enhanced API with Auto-Sanitization
+# =========================
+def safe_generate_with_sanitization(user_prompt: str) -> dict:
+    """
+    Enhanced version that automatically sanitizes unsafe prompts
+    Returns both analysis and sanitized alternatives
+    """
+    analysis = final_risk(user_prompt)
+
+    # adaptive learning
+    adaptive_update(normalize(user_prompt), analysis["risk"])
+
+    # 🔐 input-side protection with auto-sanitization
+    is_dangerous = (
+        (analysis["ml_score"] > 0.98 and analysis["risk"] > 0.45) 
+        or analysis["risk"] > 0.55
+    )
+    
+    if is_dangerous:
+        # Automatically sanitize the prompt
+        print("🔄 Unsafe prompt detected - initiating automatic sanitization...")
+        sanitization_result = sanitize_prompt(user_prompt, analysis)
+        
+        if sanitization_result:
+            # Log the sanitization for transparency
+            log_sanitization(
+                user_prompt,
+                sanitization_result["sanitized_prompt"],
+                analysis
+            )
+        
+        return {
+            "status": "blocked",
+            "analysis": analysis,
+            "original_prompt": user_prompt,
+            "sanitization": sanitization_result,
+            "block_reason": (
+                "High-confidence prompt injection detected. "
+                "Our security analysis identified patterns commonly associated with malicious prompts."
+            ),
+            "response": None
+        }
+
+    # 🤖 Gemini call for safe prompts
+    try:
+        llm_response = call_llm(user_prompt)
+
+        # 🔐 output-side protection
+        if output_risk(llm_response) > 0.4:
+            llm_response = sanitize_output()
+
+        return {
+            "status": "approved",
+            "analysis": analysis,
+            "original_prompt": user_prompt,
+            "sanitization": None,
+            "response": llm_response
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "analysis": analysis,
+            "original_prompt": user_prompt,
+            "sanitization": None,
+            "response": None,
+            "error": str(e)
+        }

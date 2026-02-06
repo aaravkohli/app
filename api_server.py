@@ -6,7 +6,7 @@ Exposes safe_llm backend as REST API for frontend consumption
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from safe_llm import safe_generate, final_risk, call_llm, output_risk
+from safe_llm import safe_generate, final_risk, call_llm, output_risk, safe_generate_with_sanitization
 import time
 import logging
 import os
@@ -291,14 +291,34 @@ def analyze():
                 }
         
         if is_dangerous:
-            # Blocked prompt
+            # Blocked prompt - include sanitized alternative
             response_data["blockReason"] = (
                 "Our security analysis detected patterns commonly associated with prompt injection attacks. "
                 "The request appears to attempt to override system instructions or manipulate the AI's behavior."
             )
-            response_data["suggestedRewrite"] = (
-                "Could you rephrase your question without asking the AI to ignore its guidelines?"
-            )
+            
+            # Use safe_generate_with_sanitization to get automatic sanitization
+            logger.info("🔄 Generating sanitized alternative for blocked prompt...")
+            enhanced_result = safe_generate_with_sanitization(prompt)
+            
+            if enhanced_result.get("sanitization"):
+                sanitization = enhanced_result["sanitization"]
+                response_data["sanitizedPrompt"] = {
+                    "text": sanitization["sanitized_prompt"],
+                    "notes": sanitization["sanitization_notes"],
+                    "timeMs": sanitization["sanitization_time_ms"],
+                    "issuesAddressed": sanitization.get("issues_addressed", [])
+                }
+                logger.info(f"✅ Sanitized alternative generated: {sanitization['sanitized_prompt'][:60]}...")
+            else:
+                # Fallback if sanitization fails
+                response_data["sanitizedPrompt"] = {
+                    "text": "Can you help me understand how to ask questions safely and effectively?",
+                    "notes": "Automatic sanitization unavailable. This is a safe general question.",
+                    "fallback": True
+                }
+                logger.warning("⚠️ Sanitization failed, using fallback")
+            
             logger.warning(f"Prompt blocked: risk={risk_score}")
         else:
             # Approved - generate response
@@ -446,6 +466,27 @@ def analyze_file():
             "analysisTime": round((time.time() - start_time) * 1000, 2),
             "threats": [],
         }
+        
+        # Add sanitization for blocked file content
+        if is_dangerous:
+            logger.info("🔄 Generating sanitized alternative for blocked file content...")
+            enhanced_result = safe_generate_with_sanitization(combined_text)
+            
+            if enhanced_result.get("sanitization"):
+                sanitization = enhanced_result["sanitization"]
+                response_data["sanitizedPrompt"] = {
+                    "text": sanitization["sanitized_prompt"],
+                    "notes": sanitization["sanitization_notes"],
+                    "timeMs": sanitization["sanitization_time_ms"],
+                    "issuesAddressed": sanitization.get("issues_addressed", [])
+                }
+                logger.info(f"✅ Sanitized alternative for file content generated")
+            else:
+                response_data["sanitizedPrompt"] = {
+                    "text": "Can you help me understand the content in a safe and appropriate way?",
+                    "notes": "Automatic sanitization unavailable. This is a safe general question.",
+                    "fallback": True
+                }
 
         if vigil_result:
             if vigil_result.get("unavailable"):
