@@ -90,7 +90,8 @@ const FileUploader = ({ onAnalysisComplete, onError, autoAnalyze = true, onFiles
 
       switch (uploadedFile.type) {
         case "image":
-          result = await apiService.analyzeImage(uploadedFile.file);
+          // Route images through file analysis endpoint for OCR processing
+          result = await apiService.analyzeFile(uploadedFile.file);
           break;
         case "video":
           result = await apiService.analyzeVideo(uploadedFile.file);
