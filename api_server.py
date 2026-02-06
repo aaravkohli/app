@@ -16,6 +16,8 @@ from io import BytesIO
 from PyPDF2 import PdfReader
 from docx import Document
 import re
+from PIL import Image
+import pytesseract
 
 # Load environment variables
 load_dotenv()
@@ -91,6 +93,28 @@ def extract_text_from_docx_bytes(data: bytes) -> str:
 
 def extract_text_from_plaintext_bytes(data: bytes) -> str:
     return _clean_extracted_text(data.decode("utf-8", errors="ignore"))
+
+
+def extract_text_from_image_bytes(data: bytes) -> str:
+    """
+    Extract text from image using OCR (Optical Character Recognition).
+    Supports: PNG, JPG, JPEG, BMP, TIFF, WebP, GIF
+    """
+    try:
+        image = Image.open(BytesIO(data))
+        # Convert RGBA to RGB if necessary for pytesseract compatibility
+        if image.mode in ("RGBA", "LA", "P"):
+            rgb_image = Image.new("RGB", image.size, (255, 255, 255))
+            rgb_image.paste(image, mask=image.split()[-1] if image.mode == "RGBA" else None)
+            image = rgb_image
+        
+        # Extract text using pytesseract
+        extracted_text = pytesseract.image_to_string(image)
+        logger.info(f"✅ OCR extraction successful: {len(extracted_text)} chars")
+        return _clean_extracted_text(extracted_text)
+    except Exception as e:
+        logger.error(f"❌ OCR extraction failed: {e}")
+        raise ValueError(f"Failed to extract text from image: {str(e)}")
 
 
 def score_to_level(score: float) -> str:
@@ -348,8 +372,15 @@ def analyze_file():
             elif file_ext in [".txt", ".md", ".csv"]:
                 extracted_text = extract_text_from_plaintext_bytes(file_bytes)
                 input_type = "document"
+            elif file_ext in [".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".webp", ".gif"]:
+                try:
+                    extracted_text = extract_text_from_image_bytes(file_bytes)
+                    input_type = "image"
+                except ValueError as e:
+                    logger.warning(f"Image OCR failed for {upload.filename}: {e}")
+                    return jsonify({"error": f"Could not extract text from image: {str(e)}"}), 400
             else:
-                return jsonify({"error": "Unsupported file type. Upload PDF, DOCX, or TXT."}), 400
+                return jsonify({"error": "Unsupported file type. Upload PDF, DOCX, TXT, or Image (PNG, JPG, JPEG, BMP, TIFF, WebP, GIF)."}), 400
 
             if extracted_text:
                 extracted_texts.append(extracted_text)
