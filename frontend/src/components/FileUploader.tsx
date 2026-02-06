@@ -86,22 +86,8 @@ const FileUploader = ({ onAnalysisComplete, onError, autoAnalyze = true, onFiles
     try {
       setFiles((prev) => prev.map((f) => (f.id === uploadedFile.id ? { ...f, status: "analyzing" } : f)));
 
-      let result: AnalysisResponse;
-
-      switch (uploadedFile.type) {
-        case "image":
-          // Route images through file analysis endpoint for OCR processing
-          result = await apiService.analyzeFile(uploadedFile.file);
-          break;
-        case "video":
-          result = await apiService.analyzeVideo(uploadedFile.file);
-          break;
-        case "code":
-          result = await apiService.analyzeCode(uploadedFile.file);
-          break;
-        default:
-          result = await apiService.analyzeFile(uploadedFile.file);
-      }
+      // All file types use the same analyzeFile endpoint
+      const result = await apiService.analyzeFile(uploadedFile.file);
 
       setFiles((prev) =>
         prev.map((f) => (f.id === uploadedFile.id ? { ...f, status: "complete", result } : f))
@@ -304,13 +290,17 @@ const FileUploader = ({ onAnalysisComplete, onError, autoAnalyze = true, onFiles
                   )}
                   {uploadedFile.status === "complete" && uploadedFile.result && (
                     <div className="flex items-center gap-2">
-                      <span className={`text-xs font-medium ${getRiskColor(uploadedFile.result.risk_level)}`}>
-                        {uploadedFile.result.risk_level.toUpperCase()}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        Risk: {Math.round(uploadedFile.result.risk_score * 100)}%
-                      </span>
-                      {uploadedFile.result.threats.length > 0 && (
+                      {uploadedFile.result.risk_level && (
+                        <span className={`text-xs font-medium ${getRiskColor(uploadedFile.result.risk_level)}`}>
+                          {uploadedFile.result.risk_level.toUpperCase()}
+                        </span>
+                      )}
+                      {uploadedFile.result.risk_score !== undefined && (
+                        <span className="text-xs text-muted-foreground">
+                          Risk: {Math.round(uploadedFile.result.risk_score * 100)}%
+                        </span>
+                      )}
+                      {uploadedFile.result.threats && uploadedFile.result.threats.length > 0 && (
                         <span className="text-xs text-orange-600">
                           {uploadedFile.result.threats.length} threat(s)
                         </span>
@@ -336,18 +326,18 @@ const FileUploader = ({ onAnalysisComplete, onError, autoAnalyze = true, onFiles
       </AnimatePresence>
 
       {/* Detailed Results */}
-      {files.some((f) => f.status === "complete" && f.result?.threats.length) && (
+      {files.some((f) => f.status === "complete" && f.result?.threats && f.result.threats.length > 0) && (
         <Alert className="border-orange-200 bg-orange-50">
           <AlertCircle className="h-4 w-4 text-orange-600" />
           <AlertDescription className="text-orange-900">
             <strong>Threats Detected:</strong>
             {files
-              .filter((f) => f.result?.threats.length)
+              .filter((f) => f.result?.threats && f.result.threats.length > 0)
               .map((f) => (
                 <div key={f.id} className="mt-2">
                   <p className="font-medium text-sm">{f.file.name}:</p>
                   <ul className="text-xs mt-1 space-y-1">
-                    {f.result?.threats.slice(0, 3).map((threat, idx) => (
+                    {f.result?.threats?.slice(0, 3).map((threat, idx) => (
                       <li key={idx} className="ml-4">
                         • {threat.type}: {threat.description}
                       </li>

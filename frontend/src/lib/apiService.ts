@@ -7,7 +7,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api"
 
 interface AnalysisResponse {
   status: "approved" | "blocked";
-  prompt: string;
+  prompt?: string;
   analysis: {
     risk: number;
     ml_score: number;
@@ -19,6 +19,14 @@ interface AnalysisResponse {
   blockReason?: string;
   suggestedRewrite?: string;
   analysisTime: number;
+  // File analysis fields
+  file_names?: string[];
+  input_type?: string;
+  extracted_chars?: number;
+  combined_text_chars?: number;
+  risk_level?: string;
+  risk_score?: number;
+  threats?: any[];
   // Vigil-LLM Multi-Scanner Detection (NEW)
   vigil_analysis?: {
     scanners: Record<string, {
